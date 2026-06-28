@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>ReAIM Cloud</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0A246A">
+<style>
+:root{ --titlebar-start:#0A246A; --titlebar-end:#A6CAF0; --chrome-bg:#ECE9D8; --chrome-border:#7F9DB9; --gold:#FFCC00; --online:#3DA84A; --away:#F2A93B; --offline:#9A9A9A; --ink:#1A1A1A; }
+*{box-sizing:border-box;}
+body{ margin:0; font-family:"Segoe UI","Tahoma",Verdana,sans-serif; background:#3A6EA5; background-image:linear-gradient(160deg,#5C8FC4,#2B4F77); height:100vh; height:100dvh; overflow:auto; color:var(--ink); }
+.window{ background:var(--chrome-bg); border:1px solid var(--chrome-border); border-radius:6px; box-shadow:2px 2px 10px rgba(0,0,0,.35); overflow:hidden; display:flex; flex-direction:column; }
+.titlebar{ background:linear-gradient(to right,var(--titlebar-start),var(--titlebar-end)); color:#fff; font-weight:bold; font-size:13px; padding:5px 8px; display:flex; align-items:center; justify-content:space-between; cursor:default; user-select:none; }
+.titlebar-btns{display:flex;gap:4px;}
+.titlebar-btns button{ width:18px;height:18px;border:1px solid #fff;background:#3A6EA5;color:#fff; font-size:11px;line-height:1;border-radius:2px;cursor:pointer; }
+#login-screen{ position:fixed;inset:0;display:flex;align-items:center;justify-content:center; }
+#login-screen .window{width:300px;}
+#login-screen .body{padding:16px;}
+.logo{ text-align:center;font-size:28px;font-weight:800;color:var(--gold); text-shadow:1px 1px 0 #0A246A, -1px -1px 0 #0A246A, 1px -1px 0 #0A246A, -1px 1px 0 #0A246A; margin-bottom:4px;letter-spacing:1px; }
+.tagline{text-align:center;font-size:11px;color:#555;margin-bottom:14px;}
+.field{margin-bottom:10px;}
+.field label{display:block;font-size:11px;margin-bottom:3px;color:#333;}
+.field input{width:100%;padding:6px 7px;border:1px solid var(--chrome-border);border-radius:3px;font-size:14px;}
+.btn-row{display:flex;gap:8px;margin-top:12px;}
+button.aim{ flex:1;padding:7px;border-radius:4px;border:1px solid #5077a0; background:linear-gradient(to bottom,#dceaf7,#a9c8e6); font-weight:bold;font-size:12px;cursor:pointer;color:#0A246A; }
+#app{display:none;height:100vh;height:100dvh;padding:10px;gap:10px;}
+#app.shown{display:flex;}
+#buddylist{width:230px;min-width:230px;height:100%;}
+#buddylist .body{flex:1;overflow-y:auto;padding:4px 0;}
+.group-label{ background:#D4D0C8;font-size:11px;font-weight:bold;padding:3px 8px;color:#333; border-top:1px solid #fff;border-bottom:1px solid #b8b8b8; }
+.buddy-row{ display:flex;align-items:center;gap:6px;padding:6px 8px;cursor:pointer;font-size:13px; }
+.status-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.buddy-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.im-window{width:300px;height:380px;}
+.im-window .body{flex:1;overflow-y:auto;padding:8px;font-size:13px;background:#fff;}
+.im-msg{margin-bottom:8px;max-width:90%;}
+.im-msg .who{font-weight:bold;font-size:11px;}
+.im-msg.me .who{color:#0A246A;} .im-msg.them .who{color:#7a1f1f;}
+.im-msg .bubble{padding:4px 0;word-wrap:break-word;} .im-msg .meta{font-size:9px;color:#999;}
+.read-status{font-size:10px;color:var(--online);margin-left:6px;font-weight:normal;}
+.im-input-row{display:flex;border-top:1px solid var(--chrome-border);}
+.im-input-row textarea{ flex:1;border:none;resize:none;padding:7px;font-size:13px;font-family:inherit;height:44px; }
+.im-input-row button{border:none;background:var(--gold);padding:0 14px;font-weight:bold;font-size:12px;cursor:pointer;}
+@media (max-width:700px){ #app{padding:0;gap:0;} #buddylist{width:100%;min-width:0;border-radius:0;display:flex;} #buddylist.hide-on-mobile{display:none;} #im-windows{padding:0;} .im-window{width:100%;height:100%;border-radius:0;flex:1;} #im-windows.hide-on-mobile{display:none;} }
+</style>
+</head>
+<body>
+<div id="login-screen">
+  <div class="window">
+    <div class="titlebar"><span>Sign In</span><div class="titlebar-btns"><button>_</button><button>x</button></div></div>
+    <div class="body">
+      <div class="logo">ReAIM Cloud</div><div class="tagline">serverless, worldwide.</div>
+      <div class="field"><label>Screen Name</label><input id="login-username" autocomplete="username" maxlength="20"></div>
+      <div class="field"><label>Password</label><input id="login-password" type="password" autocomplete="current-password"></div>
+      <div class="btn-row"><button class="aim" id="btn-submit">Sign In</button></div>
+      <div class="error-msg" id="login-error"></div>
+      <div id="mode-toggle" style="text-align:center;font-size:11px;margin-top:10px;color:#0A246A;text-decoration:underline;cursor:pointer;">New here? Create a screen name</div>
+    </div>
+  </div>
+</div>
+<div id="app">
+  <div class="window" id="buddylist">
+    <div class="titlebar">
+      <span><span class="dot" id="my-dot" style="background:var(--online)"></span><span id="my-username">Buddy List</span></span>
+      <div class="titlebar-btns"><button id="btn-signout">x</button></div>
+    </div>
+    <div class="my-status-row" style="padding:6px 8px;border-bottom:1px solid var(--chrome-border);font-size:12px;display:flex;align-items:center;gap:6px;">
+      <select id="my-status" style="font-size:11px;"><option value="online">Online</option><option value="away">Away</option></select>
+      <input id="my-away-msg" placeholder="Away message (optional)" style="display:none;flex:1;font-size:11px;padding:3px;border:1px solid var(--chrome-border);border-radius:3px;">
+    </div>
+    <div class="body" id="buddy-list-body"></div>
+    <div class="footer" style="padding:6px 8px;border-top:1px solid var(--chrome-border);display:flex;gap:6px;">
+      <input id="add-buddy-input" placeholder="Add a buddy" style="flex:1;font-size:12px;padding:4px;border:1px solid var(--chrome-border);border-radius:3px;">
+      <button id="add-buddy-btn" style="font-size:11px;padding:4px 8px;border-radius:3px;border:1px solid #5077a0;background:#dceaf7;cursor:pointer;">Add</button>
+    </div>
+  </div>
+  <div id="im-windows" class="hide-on-mobile"></div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { getDatabase, ref, set, push, onValue, onChildAdded, onChildChanged, update, serverTimestamp, onDisconnect, get, child } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
+
+const app = initializeApp({ apiKey: "AIzaSyDI_R76XopGLngLC1TbPbB4xAnbVRCNVxY", authDomain: "reaim-cloud.firebaseapp.com", projectId: "reaim-cloud", storageBucket: "reaim-cloud.firebasestorage.app", messagingSenderId: "945466693919", appId: "1:945466693919:web:52b5ea1d9c2c1422fd782a" });
+const auth = getAuth(app);
+const db = getDatabase(app);
+const storage = getStorage(app);
+
+let myUsername = null;
+let buddies = {};
+let openWindows = {};
+
+// Notifications
+function notifyIM(s,t){if(Notification.permission==="granted" && document.hidden) new Notification('ReAIM: '+s, {body:t, icon:'/icon-192.png'});}
+
+// Audio
+let actx = null;
+function tone(f,s,d,t='sine',g=0.15){ const c = actx||new (window.AudioContext||window.webkitAudioContext)(); actx=c; const osc=c.createOscillator(); const gain=c.createGain(); osc.type=t; osc.frequency.value=f; gain.gain.value=g; osc.connect(gain); gain.connect(c.destination); osc.start(c.currentTime+s); gain.gain.exponentialRampToValueAtTime(0.001,c.currentTime+s+d); osc.stop(c.currentTime+s+d); }
+function soundIM(){ tone(880,0,.08,'triangle',0.2); tone(1320,.09,.1,'triangle',0.18); }
+
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    myUsername = user.email.split('@')[0];
+    startApp();
+    if (Notification.permission === "default") Notification.requestPermission();
+  } else {
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('app').classList.remove('shown');
+  }
+});
+
+function startApp(){
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').classList.add('shown');
+  document.getElementById('my-username').innerText = myUsername;
+  
+  const myPresenceRef = ref(db, `presence/${myUsername}`);
+  onDisconnect(myPresenceRef).set({ status: 'offline', away_message: '' });
+  document.getElementById('my-status').onchange = pushMyStatus;
+  document.getElementById('my-away-msg').addEventListener('change', pushMyStatus);
+  pushMyStatus();
+
+  document.getElementById('add-buddy-btn').onclick = addBuddy;
+  loadBuddies();
+}
+
+function pushMyStatus(){
+  const status = document.getElementById('my-status').value;
+  const away_message = document.getElementById('my-away-msg').value;
+  set(ref(db, `presence/${myUsername}`), { status, away_message });
+}
+
+document.getElementById('btn-submit').onclick = async () => {
+  const u = document.getElementById('login-username').value.trim().toLowerCase();
+  const p = document.getElementById('login-password').value;
+  const isCreate = document.getElementById('btn-submit').innerText !== 'Sign In';
+  try {
+    await (isCreate ? createUserWithEmailAndPassword(auth, u+'@reaim.app', p) : signInWithEmailAndPassword(auth, u+'@reaim.app', p));
+    if(isCreate) await set(ref(db, `users/${u}`), { username: u });
+  } catch(e) { alert(e.message); }
+};
+
+document.getElementById('btn-signout').onclick = () => signOut(auth);
+document.getElementById('mode-toggle').onclick = () => {
+    const isReg = document.getElementById('btn-submit').innerText !== 'Create Screen Name';
+    document.getElementById('btn-submit').innerText = isReg ? 'Create Screen Name' : 'Sign In';
+};
+
+async function addBuddy(){
+  const input = document.getElementById('add-buddy-input');
+  const target = input.value.trim().toLowerCase();
+  const snap = await get(child(ref(db), `users/${target}`));
+  if(snap.exists()) {
+    await set(ref(db, `buddies/${myUsername}/${target}`), snap.val().username);
+    input.value = '';
+  }
+}
+
+function loadBuddies(){
+  onValue(ref(db, `buddies/${myUsername}`), (snap) => {
+    const body = document.getElementById('buddy-list-body'); body.innerHTML = '';
+    Object.values(snap.val() || {}).forEach(name => {
+      const row = document.createElement('div'); row.className = 'buddy-row'; row.innerText = name;
+      row.onclick = () => openIM(name);
+      body.appendChild(row);
+    });
+  });
+}
+
+function openIM(name){
+  if(openWindows[name]){ openWindows[name].scrollIntoView(); return; }
+  const chatId = [myUsername.toLowerCase(), name.toLowerCase()].sort().join('_');
+  const win = document.createElement('div'); win.className = 'window im-window';
+  win.innerHTML = `<div class="titlebar"><span>${name}</span><button class="im-close">x</button></div><div class="body"></div><div class="im-input-row"><input type="file" class="f-in" style="display:none"><button class="attach">📎</button><textarea style="flex:1;"></textarea><button class="send">Send</button></div>`;
+  document.getElementById('im-windows').appendChild(win);
+  openWindows[name] = win;
+  
+  win.querySelector('.send').onclick = () => {
+    push(ref(db, `messages/${chatId}`), {sender: myUsername, body: win.querySelector('textarea').value, sent_at: serverTimestamp()});
+    win.querySelector('textarea').value = '';
+  };
+  
+  win.querySelector('.attach').onclick = () => win.querySelector('.f-in').click();
+  win.querySelector('.f-in').onchange = async (e) => {
+    const f = e.target.files[0];
+    const snap = await uploadBytes(sRef(storage, `att/${Date.now()}_${f.name}`), f);
+    const url = await getDownloadURL(snap.ref);
+    push(ref(db, `messages/${chatId}`), {sender: myUsername, body: "[MEDIA]"+url, sent_at: serverTimestamp()});
+  };
+
+  let initialLoad = true;
+  onChildAdded(ref(db, `messages/${chatId}`), (snap) => {
+    const msg = snap.val();
+    const msgKey = snap.key;
+    const div = document.createElement('div'); 
+    div.className = 'im-msg'; 
+    div.id = `msg-${msgKey}`; 
+    
+    let content = msg.body;
+    if(content.startsWith("[MEDIA]")) content = `<a href="${content.substring(7)}" target="_blank">View File</a>`;
+    
+    let readBadge = (msg.sender === myUsername && msg.read) ? `<span class="read-status">✓ Read</span>` : '';
+    div.innerHTML = `<b>${msg.sender}:</b> ${content}${readBadge}`;
+    
+    win.querySelector('.body').appendChild(div);
+    win.querySelector('.body').scrollTop = win.querySelector('.body').scrollHeight;
+    
+    if(msg.sender !== myUsername) {
+      if(!msg.read) update(ref(db, `messages/${chatId}/${msgKey}`), { read: true });
+      if(!initialLoad) { soundIM(); notifyIM(msg.sender, msg.body); }
+    }
+  });
+
+  onChildChanged(ref(db, `messages/${chatId}`), (snap) => {
+    const msg = snap.val();
+    if (msg.sender === myUsername && msg.read) {
+        const msgEl = document.getElementById(`msg-${snap.key}`);
+        if (msgEl && !msgEl.querySelector('.read-status')) {
+            msgEl.innerHTML += `<span class="read-status">✓ Read</span>`;
+        }
+    }
+  });
+
+  setTimeout(() => { initialLoad = false; }, 1000);
+  win.querySelector('.im-close').onclick = () => { win.remove(); delete openWindows[name]; };
+}
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
+}
+</script>
+</body>
+</html>

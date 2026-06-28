@@ -1,0 +1,32 @@
+{
+  "rules": {
+    "users": {
+      "$username": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.token.email == $username + '@reaim.app'"
+      }
+    },
+    "presence": {
+      "$username": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.token.email == $username + '@reaim.app'"
+      }
+    },
+    "buddies": {
+      "$username": {
+        ".read": "auth != null && auth.token.email == $username + '@reaim.app'",
+        ".write": "auth != null && auth.token.email == $username + '@reaim.app'"
+      }
+    },
+    "messages": {
+      "$chatId": {
+        ".read": "auth != null && ($chatId.beginsWith(auth.token.email.replace('@reaim.app','') + '_') || $chatId.endsWith('_' + auth.token.email.replace('@reaim.app','')))",
+        ".write": "auth != null && ($chatId.beginsWith(auth.token.email.replace('@reaim.app','') + '_') || $chatId.endsWith('_' + auth.token.email.replace('@reaim.app','')))"
+      }
+    },
+    "$other": {
+      ".read": false,
+      ".write": false
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "hosting": {
+    "site": "reaim-cloud",
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ]
+  }
+}
